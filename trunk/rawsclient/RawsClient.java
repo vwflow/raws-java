@@ -21,9 +21,11 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpPut;
 import org.apache.http.client.methods.HttpRequestBase;
 import org.apache.http.entity.FileEntity;
+import org.apache.http.entity.InputStreamEntity;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.protocol.HTTP;
+import sun.misc.BASE64Encoder;
 
 
 //class RawsException extends Exception 
@@ -235,24 +237,41 @@ public class RawsClient {
         return exec_request((HttpRequestBase) httpPost);
     }
 
-    private Map<String, Object> PUT(int service_id, String uri, String slug, String filepath, String querystr) throws HttpResponseException, IOException
+    private Map<String, Object> PUT(int service_id, String uri, String slug, String filepath, String querystr, int max_bps, int chunk_size) throws HttpResponseException, IOException
     {
         String url = getUrl(service_id, uri, querystr);
 
         HttpPut httpPut = new HttpPut(url);  //-X PUT
-        httpPut.setEntity(new FileEntity(new File(filepath), "video/*"));  //@ - absolute path
+        File file = new File(filepath);
+        
+        if (max_bps > 0) {
+            int chunkSize = 2048;
+            if (chunk_size > 2048) {
+                chunkSize = chunk_size;
+            }
+            httpPut.setEntity(new ThrottledEntity(file, "video/*", max_bps, chunkSize, 200));
+        }
+        else {
+            httpPut.setEntity(new InputStreamEntity(new FileInputStream(file), file.length()));
+            httpPut.addHeader("Content-Type", "video/*");
+        }
+
         httpPut.addHeader("Accept", "application/json");
         httpPut.addHeader("Slug", slug);
 
         return exec_request((HttpRequestBase) httpPut);
     }
-    
+
+
     private Map<String, Object> exec_request(HttpRequestBase httpMethod) throws HttpResponseException, IOException
     {
         DefaultHttpClient httpClient = new DefaultHttpClient();
-        Credentials credentials = new UsernamePasswordCredentials(this.username, this.password);  //-u admin:password
-        httpClient.getCredentialsProvider().setCredentials(AuthScope.ANY, credentials);
         httpClient.getParams().setParameter("http.useragent", this.user_agent_name);
+        
+        BASE64Encoder enc = new sun.misc.BASE64Encoder();
+        String userpassword = this.username + ":" + this.password;
+        String encodedAuthorization = enc.encode( userpassword.getBytes() );
+        httpMethod.addHeader("Authorization", "Basic "+ encodedAuthorization);
 
         HttpResponse response = httpClient.execute(httpMethod);
         if (response.getStatusLine().getStatusCode() > 299) {
@@ -276,9 +295,17 @@ public class RawsClient {
     {
         String uri = "item/" + lstrip(cdn_path, "/");
         
-        return PUT(RawsClient.RASS, uri, cdn_filename, filepath, null);
+        return PUT(RawsClient.RASS, uri, cdn_filename, filepath, null, 0, 0);
     }
 
+    public Map<String, Object> rass_putItem(String cdn_path, String cdn_filename, String filepath, int maxBps, int chunkSize) throws IOException
+    {
+        String uri = "item/" + lstrip(cdn_path, "/");
+        
+        return PUT(RawsClient.RASS, uri, cdn_filename, filepath, null, maxBps, chunkSize);
+    }
+    
+    
     public Map<String, Object> meta_postWslide(String webcastID, String path, String timestamp, String offset) throws UnsupportedEncodingException, IOException
     {
         String uri = "wslide/" + this.username + "/" + webcastID + "/";
@@ -299,16 +326,16 @@ public class RawsClient {
     }
     
             
-//    /**
-//     * @param args the command line arguments
-//     */
-//    public static void main(String[] args) throws IOException 
-//    {
-//        try {
-//
-//            RawsClient rawsClient = new RawsClient("xxx", "xxx", "cdn0x");
-//            rawsClient.useDevServer(true);
-//            
+    /**
+     * @param args the command line arguments
+     */
+    public static void main(String[] args) throws IOException 
+    {
+        try {
+
+            RawsClient rawsClient = new RawsClient("bruno03", "K0nijn;;", "cdn03");
+            rawsClient.useDevServer(true);
+            
 //            Map<String, Object> dirFeed = rawsClient.rass_getDir("/java", null);
 //            Iterator<Object> entriesIter = rawsClient.getEntriesIterFromFeed(dirFeed);
 //            while ( entriesIter.hasNext() ){
@@ -316,23 +343,25 @@ public class RawsClient {
 //                String cdn_path = params.get("path");
 //                String kind = params.get("kind");
 //            }
-//            
-//            Map<String, Object> itemEntry = rawsClient.rass_putItem("/java", "slide.jpg", "/Users/bruno/Tmp/slide_capture/slides/slide_1342515179.jpg");
-//            Map<String, String> itemParams = rawsClient.getParamsFromEntry(itemEntry);
-//            String cdn_path = itemParams.get("path");
-//
+            
+            Map<String, Object> itemEntry = rawsClient.rass_putItem("/java", "slide.jpg", "/Users/bruno/Tmp/slide_capture/slides/slide_1342628213.jpg");
+            Map<String, String> itemParams = rawsClient.getParamsFromEntry(itemEntry);
+            String cdn_path = itemParams.get("path");
+            System.out.println("upload done, cdn path = " + cdn_path);
+
+
 //            Map<String, Object> wslideEntry = rawsClient.meta_postWslide("106", "/hava/slide.jpg", "70605559", "40");
 //            Map<String, String> wslideParams = rawsClient.getParamsFromEntry(wslideEntry);
 //            String id = wslideParams.get("id");
 //            String timestamp = wslideParams.get("timestamp");
 //            String path = wslideParams.get("path");
-//        }
-//        catch (Exception ex)
-//        {
-//            LOGGER.log(Level.SEVERE, "Exception raised by RawsClient:doRequest() : {0}", ex);
-//        }
-//    
-//    }
+        }
+        catch (Exception ex)
+        {
+            LOGGER.severe("Exception raised by RawsClient:doRequest() : " + ex);
+        }
+    
+    }
     
 }
         
