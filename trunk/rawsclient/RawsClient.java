@@ -333,7 +333,7 @@ public class RawsClient {
     {
         try {
 
-            RawsClient rawsClient = new RawsClient("bruno03", "K0nijn;;", "cdn03");
+            RawsClient rawsClient = new RawsClient("xxx", "xxx", "cdn0x");
             rawsClient.useDevServer(true);
             
 //            Map<String, Object> dirFeed = rawsClient.rass_getDir("/java", null);
