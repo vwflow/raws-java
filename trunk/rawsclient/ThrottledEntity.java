@@ -106,14 +106,13 @@ public class ThrottledEntity extends AbstractHttpEntity {
     
     private void throttle() throws IOException 
     {
-        System.out.println("throttle() called");
         try 
         {
             while (getBytesPerSec() > maxBytesPerSec) 
             {
                 Thread.sleep(sleepDurationMsecs);
                 totalSleepTime += sleepDurationMsecs;
-                System.out.println("throttle() : bps = " + getBytesPerSec() + " , total sleeptime " + totalSleepTime);
+                // LOGGER.finest("max bps exceeded -> throttled, current bps = " + getBytesPerSec());
             }
         }
         catch (InterruptedException e) 
