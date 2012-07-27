@@ -16,7 +16,6 @@ import org.apache.http.entity.AbstractHttpEntity;
 public class ThrottledEntity extends AbstractHttpEntity {
 
     private final File file;
-    private final InputStream content;
     private final long length;
     private boolean consumed = false;
 
@@ -31,7 +30,6 @@ public class ThrottledEntity extends AbstractHttpEntity {
     public ThrottledEntity(final File file, final String contentType, long max_bps, int buffer_size, long sleep_duration_msecs) throws FileNotFoundException
     {
         this.file = file;
-        this.content = new FileInputStream(this.file);
         this.length = file.length();
         this.maxBytesPerSec = max_bps;
         this.bufferSize = buffer_size;
@@ -40,18 +38,22 @@ public class ThrottledEntity extends AbstractHttpEntity {
         setContentType(contentType);
     }
 
+    @Override
     public boolean isRepeatable() {
         return false;
     }
 
+    @Override
     public long getContentLength() {
         return this.length;
     }
 
+    @Override
     public InputStream getContent() throws IOException {
-        return this.content;
+        return new FileInputStream(this.file);
     }
         
+    @Override
     public void writeTo(final OutputStream outstream) throws IOException 
     {
         if (outstream == null) {
@@ -61,7 +63,7 @@ public class ThrottledEntity extends AbstractHttpEntity {
         startTime = System.currentTimeMillis();
         bytesSent = 0;
         
-        InputStream instream = this.content;
+        InputStream instream = new FileInputStream(this.file);
         byte[] buffer = new byte[bufferSize];
         int l;
         if (this.length < 0) 
@@ -88,21 +90,25 @@ public class ThrottledEntity extends AbstractHttpEntity {
                 throttle();
             }
         }
+        
+        instream.close();
         this.consumed = true;
     }
 
     // non-javadoc, see interface HttpEntity
+    @Override
     public boolean isStreaming() {
         return !this.consumed;
     }
 
-    // non-javadoc, see interface HttpEntity
-    public void consumeContent() throws IOException {
-        this.consumed = true;
-        // If the input stream is from a connection, closing it will read to
-        // the end of the content. Otherwise, we don't care what it does.
-        this.content.close();
-    }
+//    // non-javadoc, see interface HttpEntity
+//    @Override
+//    public void consumeContent() throws IOException {
+//        this.consumed = true;
+//        // If the input stream is from a connection, closing it will read to
+//        // the end of the content. Otherwise, we don't care what it does.
+//        this.content.close();
+//    }
     
     private void throttle() throws IOException 
     {

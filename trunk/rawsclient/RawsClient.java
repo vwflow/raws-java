@@ -10,39 +10,18 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.apache.http.HttpResponse;
-import org.apache.http.auth.AuthScope;
-import org.apache.http.auth.Credentials;
-import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.HttpResponseException;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpPut;
 import org.apache.http.client.methods.HttpRequestBase;
-import org.apache.http.entity.FileEntity;
 import org.apache.http.entity.InputStreamEntity;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.protocol.HTTP;
 import sun.misc.BASE64Encoder;
-
-
-//class RawsException extends Exception 
-//{
-//    private int status_code = 0;
-//
-//    public RawsException(String msg) {
-//        super(msg);
-//    }
-//    
-//    public RawsException(int status, String msg) {
-//        super(msg);
-//        status_code = status;
-//    }
-//    
-//    public int get_status_code() { return status_code; }
-//}
 
 /**
  *
@@ -51,7 +30,7 @@ import sun.misc.BASE64Encoder;
 public class RawsClient {
     
     // set logger from your client application
-    private final static Logger LOGGER = Logger.getLogger("SlideCapture");
+    private static Logger LOGGER; 
 
     private String username;
     private String password;
@@ -66,11 +45,17 @@ public class RawsClient {
     private static final int RAMS = 4;
     private static final int RASE = 5;
 
-    public RawsClient(String username, String password, String cdn) 
+    public RawsClient(String username, String password, String cdn, Logger logger) 
     {
         this.username = username;
         this.password = password;
         this.cdn = cdn;
+        if (logger != null) {
+            RawsClient.LOGGER = logger;
+        }
+        else {
+            RawsClient.LOGGER = Logger.getLogger("RawsClient");
+        }
     }
     
     public void setUsername(String username) {
@@ -101,7 +86,7 @@ public class RawsClient {
     // StringBuilder can be converted to a normal String with the .toString() method.
     private StringBuilder inputStreamToString(InputStream is) throws IOException 
     {
-        String line = "";
+        String line;
         StringBuilder total = new StringBuilder();
     
         // Wrap a BufferedReader around the InputStream
@@ -116,24 +101,29 @@ public class RawsClient {
         return total;
     }    
     
-    public Map<String, String> getParamsFromEntry(Map<String, Object> entryObj)
+    @SuppressWarnings("unchecked")
+    public Map<String, String> getParamsFromEntry(Map<String, Object> entryObj) throws ClassCastException
     {
         Map<String, Object> entry = (Map<String, Object>) entryObj.get("entry");
         Map<String, Object> content = (Map<String, Object>) entry.get("content");
         return (Map<String, String>) content.get("params");
     }
 
-    public Map<String, String> getParamsFromFeedEntry(Map<String, Object> entry)
+    @SuppressWarnings("unchecked")
+    public Map<String, String> getParamsFromFeedEntry(Map<String, Object> entry) throws ClassCastException
     {
         Map<String, Object> content = (Map<String, Object>) entry.get("content");
         return (Map<String, String>) content.get("params");
     }
 
-    public Iterator<Object> getEntriesIterFromFeed(Map<String, Object> dirFeed) {
+    @SuppressWarnings("unchecked")
+    public Iterator<Object> getEntriesIterFromFeed(Map<String, Object> dirFeed) throws ClassCastException 
+    {
         Map<String, Object> entryObj = (Map<String, Object>) dirFeed.get("feed");
         List<Object> entries = (List<Object>) entryObj.get("entry");
         return entries.iterator();
     }
+
     
     public static String lstrip(String str, String remove) {
         if ( str.isEmpty() || remove.isEmpty() ) {
@@ -212,7 +202,7 @@ public class RawsClient {
         return server;
     }
     
-    private Map<String, Object> GET(int service_id, String uri, String querystr) throws HttpResponseException, IOException 
+    private Map<String, Object> GET(int service_id, String uri, String querystr) throws HttpResponseException, IOException, ClassCastException 
     {
         String url = getUrl(service_id, uri, querystr);
     
@@ -222,12 +212,12 @@ public class RawsClient {
         return exec_request((HttpRequestBase) httpGet);
     }
     
-    private Map<String, Object> POST(int service_id, String uri, Map<String, Object> dataMap, String querystr) throws HttpResponseException, IOException
+    private Map<String, Object> POST(int service_id, String uri, Map<String, Object> dataMap, String querystr) throws HttpResponseException, IOException, ClassCastException
     {
         String url = getUrl(service_id, uri, querystr);
 
         ObjectMapper mapper = new ObjectMapper();
-        StringEntity entity = new StringEntity(mapper.writeValueAsString(dataMap), HTTP.UTF_8);
+        StringEntity entity = new StringEntity(mapper.writeValueAsString(dataMap), "UTF-8");
         
         HttpPost httpPost = new HttpPost(url);
         entity.setContentType("application/json");
@@ -237,7 +227,7 @@ public class RawsClient {
         return exec_request((HttpRequestBase) httpPost);
     }
 
-    private Map<String, Object> PUT(int service_id, String uri, String slug, String filepath, String querystr, int max_bps, int chunk_size) throws HttpResponseException, IOException
+    private Map<String, Object> PUT(int service_id, String uri, String slug, String filepath, String querystr, int max_bps, int chunk_size) throws HttpResponseException, IOException, ClassCastException
     {
         String url = getUrl(service_id, uri, querystr);
 
@@ -262,12 +252,12 @@ public class RawsClient {
         return exec_request((HttpRequestBase) httpPut);
     }
 
-
-    private Map<String, Object> exec_request(HttpRequestBase httpMethod) throws HttpResponseException, IOException
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> exec_request(HttpRequestBase httpMethod) throws HttpResponseException, IOException, ClassCastException
     {
         DefaultHttpClient httpClient = new DefaultHttpClient();
         httpClient.getParams().setParameter("http.useragent", this.user_agent_name);
-        
+
         BASE64Encoder enc = new sun.misc.BASE64Encoder();
         String userpassword = this.username + ":" + this.password;
         String encodedAuthorization = enc.encode( userpassword.getBytes() );
@@ -275,30 +265,60 @@ public class RawsClient {
 
         HttpResponse response = httpClient.execute(httpMethod);
         if (response.getStatusLine().getStatusCode() > 299) {
-            throw new HttpResponseException(response.getStatusLine().getStatusCode(), inputStreamToString(response.getEntity().getContent()).toString());
+            // try to get the reasons from the json error response
+            String strErr = getReasonsFromErrorMsg(response);
+            if (strErr.isEmpty()) {
+                // if we can't get the reasons, dump the entire response body
+                strErr = inputStreamToString(response.getEntity().getContent()).toString();
+            }
+            throw new HttpResponseException(response.getStatusLine().getStatusCode(), strErr);
         }
         ObjectMapper mapper2 = new ObjectMapper();
         Object responseObject = mapper2.readValue(response.getEntity().getContent(), Object.class);
         httpMethod.releaseConnection();
-
         return (Map<String, Object>) responseObject;
     }
+
+    @SuppressWarnings("unchecked")
+    private String getReasonsFromErrorMsg(HttpResponse errResponse)
+    {
+        String strReasons = "";
+        try 
+        {
+            ObjectMapper mapper2 = new ObjectMapper();
+            Map<String, Object> errBody = (Map<String, Object>) mapper2.readValue(errResponse.getEntity().getContent(), Object.class);
+            List<String> reasonsObj = (List<String>) errBody.get("reasons");
+            Iterator<String> iter = reasonsObj.iterator();
+            while ( iter.hasNext() ) {
+                if (! strReasons.isEmpty()) {
+                    strReasons += ", ";
+                }
+                strReasons += iter.next();
+            }
+        }           
+        catch (Exception ex)
+        {
+            LOGGER.log(Level.WARNING, "Error while parsing error response: {0}", ex);
+        }
+        return strReasons;
+    }
+
     
-    public Map<String, Object> rass_getDir(String cdn_path, String querystr) throws IOException
+    public Map<String, Object> rass_getDir(String cdn_path, String querystr) throws HttpResponseException, IOException, ClassCastException
     {
         String uri = "dir/" + lstrip(cdn_path, "/");
         
         return GET(RawsClient.RASS, uri, querystr);
     }
     
-    public Map<String, Object> rass_putItem(String cdn_path, String cdn_filename, String filepath) throws IOException
+    public Map<String, Object> rass_putItem(String cdn_path, String cdn_filename, String filepath) throws HttpResponseException, IOException, ClassCastException
     {
         String uri = "item/" + lstrip(cdn_path, "/");
         
         return PUT(RawsClient.RASS, uri, cdn_filename, filepath, null, 0, 0);
     }
 
-    public Map<String, Object> rass_putItem(String cdn_path, String cdn_filename, String filepath, int maxBps, int chunkSize) throws IOException
+    public Map<String, Object> rass_putItem(String cdn_path, String cdn_filename, String filepath, int maxBps, int chunkSize) throws HttpResponseException, IOException, ClassCastException
     {
         String uri = "item/" + lstrip(cdn_path, "/");
         
@@ -306,129 +326,23 @@ public class RawsClient {
     }
     
     
-    public Map<String, Object> meta_postWslide(String webcastID, String path, String timestamp, String offset) throws UnsupportedEncodingException, IOException
+    public Map<String, Object> meta_postWslide(String webcastID, String path, String timestamp, String offset) throws HttpResponseException, IOException, ClassCastException
     {
         String uri = "wslide/" + this.username + "/" + webcastID + "/";
-        
-	Map<String, Object> entryMap = new HashMap<String, Object>();
-	Map<String, Object> entryInMap = new HashMap<String, Object>();
-	Map<String, Object> contentInMap = new HashMap<String, Object>();
-	Map<String, String> paramsInMap = new HashMap<String, String>();
-	paramsInMap.put("webcast_id", webcastID);
-	paramsInMap.put("path", path);
-	paramsInMap.put("timestamp", timestamp);
-	paramsInMap.put("offset", offset);
-	contentInMap.put("params", paramsInMap);
-	entryInMap.put("content", contentInMap);
-	entryMap.put("entry", entryInMap);
-        
+
+        Map<String, Object> entryMap = new HashMap<String, Object>();
+        Map<String, Object> entryInMap = new HashMap<String, Object>();
+        Map<String, Object> contentInMap = new HashMap<String, Object>();
+        Map<String, String> paramsInMap = new HashMap<String, String>();
+        paramsInMap.put("webcast_id", webcastID);
+        paramsInMap.put("path", path);
+        paramsInMap.put("timestamp", timestamp);
+        paramsInMap.put("offset", offset);
+        contentInMap.put("params", paramsInMap);
+        entryInMap.put("content", contentInMap);
+        entryMap.put("entry", entryInMap);
+            
         return POST(RawsClient.META, uri, entryMap, null);
     }
     
-            
-    /**
-     * @param args the command line arguments
-     */
-    public static void main(String[] args) throws IOException 
-    {
-        try {
-
-            RawsClient rawsClient = new RawsClient("xxx", "xxx", "cdn0x");
-            rawsClient.useDevServer(true);
-            
-//            Map<String, Object> dirFeed = rawsClient.rass_getDir("/java", null);
-//            Iterator<Object> entriesIter = rawsClient.getEntriesIterFromFeed(dirFeed);
-//            while ( entriesIter.hasNext() ){
-//                Map<String, String> params = rawsClient.getParamsFromFeedEntry((Map<String, Object>) entriesIter.next());
-//                String cdn_path = params.get("path");
-//                String kind = params.get("kind");
-//            }
-            
-            Map<String, Object> itemEntry = rawsClient.rass_putItem("/java", "slide.jpg", "/Users/bruno/Tmp/slide_capture/slides/slide_1342628213.jpg");
-            Map<String, String> itemParams = rawsClient.getParamsFromEntry(itemEntry);
-            String cdn_path = itemParams.get("path");
-            System.out.println("upload done, cdn path = " + cdn_path);
-
-
-//            Map<String, Object> wslideEntry = rawsClient.meta_postWslide("106", "/hava/slide.jpg", "70605559", "40");
-//            Map<String, String> wslideParams = rawsClient.getParamsFromEntry(wslideEntry);
-//            String id = wslideParams.get("id");
-//            String timestamp = wslideParams.get("timestamp");
-//            String path = wslideParams.get("path");
-        }
-        catch (Exception ex)
-        {
-            LOGGER.severe("Exception raised by RawsClient:doRequest() : " + ex);
-        }
-    
-    }
-    
 }
-        
-// OLD METHOD WITHOUT USING APACHE HttpClient
-//    private Object doRequest(String url, String method, Map<String, Object> dataMap, String filepath, Boolean decode, Map<String, String> extraHeadersMap)
-//    {
-//        URL urlObj;
-//        HttpURLConnection connection = null;
-//        Object responseObject = null;
-//        
-//        try 
-//        {
-//            //Create connection
-//            urlObj = new URL(url);
-//            connection = (HttpURLConnection)urlObj.openConnection();
-//            connection.setRequestMethod(method);
-//            
-//            if (filepath == null) { 
-//                connection.setRequestProperty("Content-Type", "application/json");
-//            }
-//            else { // if we're uploading a file, set the SLUG header + Content-Length of the payload
-//                connection.setRequestProperty("Content-Type", "video/*");
-//            }
-//            
-//            // unless decode is False, we want the response to be encoded in to json
-//            if (decode) {
-//                connection.setRequestProperty("Accept", "application/json");
-//            }
-//
-//            BASE64Encoder enc = new sun.misc.BASE64Encoder();
-//            String userpassword = this.username + ":" + this.password;
-//            String encodedAuthorization = enc.encode( userpassword.getBytes() );
-//            connection.setRequestProperty("Authorization", "Basic "+ encodedAuthorization);
-//    //        connection.setRequestProperty("Content-Length", "" + 
-//    //                Integer.toString(urlParameters.getBytes().length));
-//
-//            if (extraHeadersMap != null) {
-//                Set set = extraHeadersMap.entrySet();
-//                Iterator i = set.iterator();
-//                while(i.hasNext()){
-//                    Map.Entry me = (Map.Entry)i.next();
-//                    connection.setRequestProperty((String)me.getKey(), (String)me.getValue());
-//                }
-//            }
-//            connection.setUseCaches(false);
-//            connection.setDoInput(true);
-//            connection.setDoOutput(true);
-//            
-//            ObjectMapper mapper = new ObjectMapper();
-//            mapper.writeValue(connection.getOutputStream(), dataMap);
-//
-//            // SEND REQUEST + GET RESPONSE
-//            InputStream is = connection.getInputStream();
-//            responseObject = mapper.readValue(is, Object.class);
-//            
-//        }
-//        catch (Exception ex)
-//        {
-//            LOGGER.log(Level.SEVERE, "Exception raised by RawsClient:doRequest() : {0}", ex);
-//        }
-//        finally 
-//        {
-//            if(connection != null) {
-//                connection.disconnect(); 
-//            }
-//        }
-//            
-//        return responseObject;
-//    }
-        
