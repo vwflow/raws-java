@@ -350,4 +350,20 @@ public class RawsClient {
         return POST(RawsClient.META, uri, entryMap, null);
     }
     
+    public Map<String, Object> meta_postTmpWslide(String webcastID, String path) throws HttpResponseException, IOException, ClassCastException
+    {
+        String uri = "wslide/tmp/" + this.username + "/" + webcastID + "/";
+
+        Map<String, Object> entryMap = new HashMap<String, Object>();
+        Map<String, Object> entryInMap = new HashMap<String, Object>();
+        Map<String, Object> contentInMap = new HashMap<String, Object>();
+        Map<String, String> paramsInMap = new HashMap<String, String>();
+        paramsInMap.put("webcast_id", webcastID);
+        paramsInMap.put("path", path);
+        contentInMap.put("params", paramsInMap);
+        entryInMap.put("content", contentInMap);
+        entryMap.put("entry", entryInMap);
+            
+        return POST(RawsClient.META, uri, entryMap, null);
+    }
 }
