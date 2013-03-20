@@ -331,7 +331,7 @@ public class RawsClient {
     }
     
     
-    public Map<String, Object> meta_postWslide(String webcastID, String path, String timestamp, String offset) throws HttpResponseException, IOException, ClassCastException
+    public Map<String, Object> meta_postWslide(String webcastID, String path, String timestamp, String offset, String width, String height) throws HttpResponseException, IOException, ClassCastException
     {
         String uri = "wslide/" + this.username + "/" + webcastID + "/";
 
@@ -343,6 +343,8 @@ public class RawsClient {
         paramsInMap.put("path", path);
         paramsInMap.put("timestamp", timestamp);
         paramsInMap.put("offset", offset);
+        paramsInMap.put("width", width);
+        paramsInMap.put("height", height);
         contentInMap.put("params", paramsInMap);
         entryInMap.put("content", contentInMap);
         entryMap.put("entry", entryInMap);
@@ -350,7 +352,7 @@ public class RawsClient {
         return POST(RawsClient.META, uri, entryMap, null);
     }
     
-    public Map<String, Object> meta_postTmpWslide(String webcastID, String path) throws HttpResponseException, IOException, ClassCastException
+    public Map<String, Object> meta_postTmpWslide(String webcastID, String path, String width, String height) throws HttpResponseException, IOException, ClassCastException
     {
         String uri = "wslide/tmp/" + this.username + "/" + webcastID + "/";
 
@@ -360,6 +362,8 @@ public class RawsClient {
         Map<String, String> paramsInMap = new HashMap<String, String>();
         paramsInMap.put("webcast_id", webcastID);
         paramsInMap.put("path", path);
+        paramsInMap.put("width", width);
+        paramsInMap.put("height", height);
         contentInMap.put("params", paramsInMap);
         entryInMap.put("content", contentInMap);
         entryMap.put("entry", entryInMap);
