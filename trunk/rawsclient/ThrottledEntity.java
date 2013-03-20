@@ -129,7 +129,7 @@ public class ThrottledEntity extends AbstractHttpEntity {
             {
                 Thread.sleep(sleepDurationMsecs);
                 totalSleepTime += sleepDurationMsecs;
-                // LOGGER.finest("max bps exceeded -> throttled, current bps = " + getBytesPerSec());
+                // LOGGER.fine("max bps exceeded -> throttled, current bps = " + getBytesPerSec());
             }
         }
         catch (InterruptedException e) 
