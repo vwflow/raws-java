@@ -369,5 +369,5 @@ public class RawsClient {
         entryMap.put("entry", entryInMap);
             
         return POST(RawsClient.META, uri, entryMap, null);
-    }
+    }    
 }
